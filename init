@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# create docker network teamcity
+docker network create teamcity \
+	-d bridge \
+	--scope local \
+	--attachable \
+	--label com.docker.compose.network=teamcity
+
+# create .env file with DOMAIN_NAME and POSTGRES_PASSWORD
+> ./.env
+
+# Set up variables with user values
+echo -e "POSTGRES_PASSWORD="${1} >> ./.env
+echo -e "DOMAIN_NAME="${2} >> ./.env
+
+# start TeamCity server
+docker-compose up -d
+
+# echo service list and current status to stdout
+docker ps --format "table {{.Names}}\t{{.Status}}"
