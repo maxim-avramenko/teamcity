@@ -14,6 +14,19 @@ services:
     restart: always
     depends_on:
       - db
+      - agent
+
+  agent:
+    image: "jetbrains/teamcity-agent:latest"
+    container_name: "teamcity_agent"
+    environment:
+      SERVER_URL: "teamcity:8111"
+      DOCKER_IN_DOCKER: "start"
+    volumes:
+      - "${HOME}/apps:/apps"
+      - "./agent:/data/teamcity_agent/conf"
+      - "agent_volumes:/var/lib/docker"
+    privileged: true
 
   db:
     image: "postgres:10.4"
@@ -45,12 +58,10 @@ services:
     command: /bin/bash -c "envsubst '$${DOMAIN_NAME}' < /etc/nginx/conf.d/templates/teamcity.template > /etc/nginx/conf.d/default.conf && /usr/local/openresty/bin/openresty -g 'daemon off;'"
 
 volumes:
-  data:
-    driver: local
-  logs:
-    driver: local
-  db_data:
-    driver: local
+  data: {}
+  logs: {}
+  db_data: {}
+  agent_volumes: {}
 networks:
   default:
     external:
