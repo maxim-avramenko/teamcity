@@ -1,11 +1,13 @@
 TeamCity server in docker-compose
 =================================
 
-Clone repository:
+Clone repository and make teamcity bash script executable:
 
-        git clone https://github.com/maxim-avramenko/teamcity.git && cd teamcity
+        git clone https://github.com/maxim-avramenko/teamcity.git \
+        && cd teamcity \
+        && chmod +x teamcity
 
-To init and start TeamCity server use command:
+Init and start TeamCity server with your own params, for example:
 
         ./teamcity --domain-name=teamcity.local \
                    --network=teamcity \
