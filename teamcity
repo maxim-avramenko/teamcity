@@ -278,7 +278,6 @@ stop()
 
 init()
 {
-    stop
     create-network
     env
     pull
