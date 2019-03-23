@@ -1,0 +1,299 @@
+#!/usr/bin/env bash
+set -e
+
+# Default values for TeamCity
+DOMAIN_NAME=teamcity.local
+POSTGRES_DB=teamcity
+POSTGRES_USER=root
+POSTGRES_PASSWORD=TeamcitypassA1
+NETWORK=teamcity
+TIMEZONE=Europe/Moscow
+COMMANDS=(
+    init
+    start
+    status
+)
+# show help message function
+help-message()
+{
+echo "
+
+Usage: ./teamcity [OPTION]...
+
+Create or update .env file for TeamCity docker-compose.yml configuration.
+
+Mandatory arguments to long options are mandatory for short options too.
+
+  --domain-name=${DOMAIN_NAME}      set up new domain-name for teamcity
+                                    example: --domain-name=${DOMAIN_NAME}
+                                    default: ${DOMAIN_NAME}
+
+  --network=${NETWORK}              set up new network for teamcity services
+                                    example: --network=${NETWORK}
+                                    default: ${NETWORK}
+
+  --db-name=${POSTGRES_DB}          set up new db name
+                                    example: --db-name=${POSTGRES_DB}
+                                    default: ${POSTGRES_DB}
+
+  --db-user=${POSTGRES_USER}        set up new db user
+                                    example: --db-user=${POSTGRES_USER}
+                                    default: ${POSTGRES_USER}
+
+  --db-pass=${POSTGRES_PASSWORD}    set up new db password
+                                    example: --db-pass=${POSTGRES_PASSWORD}
+                                    default: ${POSTGRES_PASSWORD}
+
+  --timezone=${TIMEZONE}            set up new timezone for db
+                                    example: --timezone=${TIMEZONE}
+                                    default: ${TIMEZONE}
+
+  -d, --debug                       run config in debug mode
+
+  -h, --help                        display this help and exit
+
+  -v, --verbose                     run config in verbose mode
+
+Example for init teamcity:
+
+  ./teamcity --domain-name=${DOMAIN_NAME} \\
+             --network=${NETWORK} \\
+             --db-name=${POSTGRES_DB} \\
+             --db-user=${POSTGRES_USER} \\
+             --db-pass=${POSTGRES_PASSWORD} \\
+             -d \\
+             -v \\
+             init
+
+"
+}
+
+_showed_traceback=f
+
+traceback() {
+	# Hide the traceback() call.
+	local -i start=$(( ${1:-0} + 1 ))
+	local -i end=${#BASH_SOURCE[@]}
+	local -i i=0
+	local -i j=0
+
+    if [[ ${VERBOSE} == true ]]; then
+        echo "Traceback (last called is first):" 1>&2
+    fi
+
+	for ((i=${start}; i < ${end}; i++)); do
+		j=$(( $i - 1 ))
+		local function="${FUNCNAME[$i]}"
+		local file="${BASH_SOURCE[$i]}"
+		local line="${BASH_LINENO[$j]}"
+		if [[ ${VERBOSE} == true ]]; then
+            echo "     ${function}() in ${file}:${line}" 1>&2
+        fi
+	done
+}
+
+on_error() {
+    local _ec="$?"
+    local _cmd="${BASH_COMMAND:-unknown}"
+    traceback 1
+    _showed_traceback=t
+    if [[ ${VERBOSE} == true ]]; then
+        echo "The command ${_cmd} exited with exit code ${_ec}." 1>&2
+    fi
+
+}
+trap on_error ERR
+
+
+on_exit() {
+    if [[ ${VERBOSE} == true ]]; then
+        echo "Cleaning up before Exit ..."
+    fi
+    local _ec="$?"
+    if [[ $_ec != 0 && "${_showed_traceback}" != t ]]; then
+        traceback 1
+    fi
+}
+trap on_exit EXIT
+
+# http://bahmanm.com/blogs/command-line-options-how-to-parse-in-bash-using-getopt
+# set up long and short keys
+OPTS=`getopt -o vdh --long verbose,debug,help,domain-name:,db-name:,db-user:,db-pass:,network:,timezone: -- "$@"`
+
+if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
+
+#echo "$OPTS"
+eval set -- "${OPTS}"
+
+while true; do
+  case "$1" in
+    -v|--verbose)
+        set -v
+        VERBOSE=true
+        shift
+    ;;
+    -d|--debug)
+        set -x
+        shift
+    ;;
+    -h|--help)
+        help-message
+        shift
+        exit 0
+    ;;
+    --domain-name)
+        case "$2" in
+            "")
+                shift 2
+            ;;
+            *)
+                DOMAIN_NAME=$2
+                shift 2
+            ;;
+        esac
+    ;;
+    --network)
+        case "$2" in
+            "")
+                shift 2
+            ;;
+            *)
+                NETWORK=$2
+                shift 2
+            ;;
+        esac
+    ;;
+    --db-name)
+        case "$2" in
+            "")
+                shift 2
+            ;;
+            *)
+                POSTGRES_DB=$2
+                shift 2
+            ;;
+        esac
+    ;;
+    --db-user)
+        case "$2" in
+            "")
+                shift 2
+            ;;
+            *)
+                POSTGRES_USER=$2
+                shift 2
+            ;;
+        esac
+    ;;
+    --db-pass)
+        case "$2" in
+            "")
+                shift 2
+            ;;
+            *)
+                POSTGRES_PASSWORD=$2
+                shift 2
+            ;;
+        esac
+    ;;
+    --timezone)
+        case "$2" in
+            "")
+                shift 2
+            ;;
+            *)
+                TIMEZONE=$2
+                shift 2
+            ;;
+        esac
+    ;;
+    --)
+        shift
+        COMMANDS=("$@")
+        break
+    ;;
+    *)
+       break
+    ;;
+  esac
+done
+
+check-network()
+{
+    echo $(docker network ls --format "{{.Name}}" | grep -x "${NETWORK}")
+}
+
+create-network()
+{
+    TEAMCITY_NETWORK=$(check-network)
+
+    if [[ ${#TEAMCITY_NETWORK} == 0 ]]; then
+        # create docker network teamcity
+        docker network create ${NETWORK}
+        echo "Creating new network: '${NETWORK}'"
+    else
+        echo "Network '"${NETWORK}"' already exist"
+    fi
+}
+
+env()
+{
+    # create .env file with DOMAIN_NAME and POSTGRES_PASSWORD
+    > ./.env
+
+    # Set up variables with user values
+    echo "DOMAIN_NAME="${DOMAIN_NAME} >> ./.env
+    echo "POSTGRES_DB="${POSTGRES_DB} >> ./.env
+    echo "POSTGRES_USER="${POSTGRES_USER} >> ./.env
+    echo "POSTGRES_PASSWORD="${POSTGRES_PASSWORD} >> ./.env
+    echo "NETWORK="${NETWORK} >> ./.env
+    echo "TIMEZONE="${TIMEZONE} >> ./.env
+}
+
+pull()
+{
+    # start TeamCity server
+    docker-compose pull
+}
+
+start()
+{
+    # start TeamCity server
+    docker-compose up -d
+}
+
+status()
+{
+    # status TeamCity server
+    docker-compose ps
+    # echo service list and current status to stdout
+    # docker ps --format "table {{.Names}}\t{{.Status}}"
+}
+
+stop()
+{
+    # down teamcity services
+    docker-compose down
+}
+
+init()
+{
+    create-network
+    env
+    pull
+}
+
+# запускаем команды поочереди, в том порядке в котором запросил пользователь
+if [[ "${#COMMANDS[@]}" > 0 ]]; then
+    #echo "Команды запускаются по порядку как указано в команде запуска!"
+    for i in "${COMMANDS[@]}"
+    do
+        #echo "Выполняем команду: ${i}"
+        "${i}"
+    done
+else
+    help-message
+    exit 0
+fi
+
+exit 0

@@ -7,17 +7,26 @@ Clone repository:
 
 To init and start TeamCity server use command:
 
-        ./init <database password> <TeamCity server domain name>
+        ./teamcity --domain-name=teamcity.local \
+                   --network=teamcity \
+                   --db-name=teamcity \
+                   --db-user=root \
+                   --db-pass=TeamcitypassA1 \
+                   --timezone=Europe/Moscow \
+                   init \
+                   start \
+                   status
 
-        ./init StrongTeamCityDatabasePassword teamcity.local
+Don't forget to set StrongTeamCityDatabasePassword and teamcity.local domain name to your own password and domain name 
 
-Don't forget to change StrongTeamCityDatabasePassword and teamcity.local to your own domain name and password and add domain to your system 'hosts' file
+`Don't forget to add your domain.local to your system 'hosts' file.`
 
 Example for linux (you must be in sudoers group):
 
         echo "127.0.0.1    teamcity.local" | sudo tee -a /etc/hosts
 
 Open teamcity.local in your favorite browser to set up TeamCity application.
+
 Example for google-chrome browser:
 
         google-chrome http://teamcity.local
@@ -28,7 +37,7 @@ Database credentials:
 
         Database name: teamcity
         Database username: root
-        Database password: <StrongTeamCityDatabasePassword>
+        Database password: TeamcitypassA1
 
 All together in one string:
 ---------------------------
@@ -36,8 +45,15 @@ All together in one string:
         git clone https://github.com/maxim-avramenko/teamcity.git \
         && cd teamcity \
         && echo "127.0.0.1    teamcity.local" | sudo tee -a /etc/hosts \
-        && ./init StrongTeamCityDatabasePassword teamcity.local \
-        && docker ps --format "table {{.Names}}\t{{.Status}}" \
+        && ./teamcity --domain-name=teamcity.local \
+                      --network=teamcity \
+                      --db-name=teamcity \
+                      --db-user=root \
+                      --db-pass=TeamcitypassA1 \
+                      --timezone=Europe/Moscow \
+                      init \
+                      start \
+                      status \
         && google-chrome http://teamcity.local
 
 

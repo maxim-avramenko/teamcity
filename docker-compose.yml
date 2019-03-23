@@ -1,68 +1,71 @@
-version: '3'
+version: "3"
 services:
 
-  teamcity:
-    image: "jetbrains/teamcity-server:latest"
-    container_name: "teamcity"
+  app:
+    image: "jetbrains/teamcity-server:2018.2.3-linux"
     environment:
       TEAMCITY_SERVER_MEM_OPTS: "-Xmx2g -XX:MaxPermSize=270m -XX:ReservedCodeCacheSize=350m"
+    ports:
+      - "8111:8111"
     expose:
-      - "8111"
+      - 8111
     volumes:
       - "data:/data/teamcity_server/datadir"
       - "logs:/opt/teamcity/logs"
+    labels:
+      - "traefik.backend=teamcity_app"
+      - "traefik.frontend.rule=Host:${DOMAIN_NAME}"
+    networks:
+      - "teamcity"
     restart: always
-    depends_on:
-      - db
-      - agent
 
   agent:
-    image: "jetbrains/teamcity-agent:latest"
-    container_name: "teamcity_agent"
-    environment:
-      SERVER_URL: "teamcity:8111"
-      DOCKER_IN_DOCKER: "start"
+    image: "jetbrains/teamcity-agent:2018.2.3-linux"
+    restart: always
+    networks:
+      - "teamcity"
+    labels:
+      - "traefik.backend=teamcity_agent"
     volumes:
-      - "${HOME}/apps:/apps"
-      - "./agent:/data/teamcity_agent/conf"
-      - "agent_volumes:/var/lib/docker"
+      - "agent_config:/data/teamcity_agent/conf"
+      - "docker_volumes:/var/lib/docker"
+    environment:
+      AGENT_NAME: "teamcity_agent"
+      DOCKER_IN_DOCKER: "start"
+      SERVER_URL: "app:8111"
     privileged: true
 
   db:
-    image: "postgres:10.4"
-    container_name: "teamcity-db"
+    image: "postgres:10.7"
     restart: always
     volumes:
-      - "db_data:/var/lib/postgresql/data"
+      - "pg_data:/var/lib/postgresql/data"
+      - "pg_backup:/backup/"
     environment:
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-      POSTGRES_USER: "root"
-      POSTGRES_DB: "teamcity"
+      - "POSTGRES_DB=${POSTGRES_DB}"
+      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
     expose:
       - "5432"
-
-  web:
-    image: "mcsim/openresty:base"
-    container_name: "teamcity-web"
-    restart: always
-    volumes:
-      - "./conf.d:/etc/nginx/conf.d/templates"
-    expose:
-      - "80"
-    environment:
-      - "DOMAIN_NAME=${DOMAIN_NAME}"
-    depends_on:
-      - teamcity
+    networks:
+      - "teamcity"
     labels:
-      - "traefik.frontend.rule=Host:${DOMAIN_NAME}"
-    command: /bin/bash -c "envsubst '$${DOMAIN_NAME}' < /etc/nginx/conf.d/templates/teamcity.template > /etc/nginx/conf.d/default.conf && /usr/local/openresty/bin/openresty -g 'daemon off;'"
+      - "traefik.backend=teamcity_db"
+    command: [
+      "postgres",
+      "-c", "timezone=${TIMEZONE}",
+      "-c", "log_timezone=${TIMEZONE}"
+    ]
 
 volumes:
-  data: {}
-  logs: {}
-  db_data: {}
-  agent_volumes: {}
+  pg_data:
+  pg_backup:
+  data:
+  logs:
+  agent_config:
+  docker_volumes:
+
 networks:
-  default:
+  teamcity:
     external:
-      name: teamcity
+      name: "${NETWORK}"
