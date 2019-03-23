@@ -60,3 +60,54 @@ All together in one string:
 
 
 This command clone repo, init TeamCity with my teamcity.local domain name and DB password, adds teamcity.local to /etc/hosts and open it in my google-chrome
+
+./teamcity --help
+-----------------
+
+        Usage: ./teamcity [OPTION]...
+        
+        Create or update .env file for TeamCity docker-compose.yml configuration.
+        
+        Mandatory arguments to long options are mandatory for short options too.
+        
+          --domain-name=teamcity.local      set up new domain-name for teamcity
+                                            example: --domain-name=teamcity.local
+                                            default: teamcity.local
+        
+          --network=teamcity                set up new network for teamcity services
+                                            example: --network=teamcity
+                                            default: teamcity
+        
+          --db-name=teamcity                set up new db name
+                                            example: --db-name=teamcity
+                                            default: teamcity
+        
+          --db-user=root                    set up new db user
+                                            example: --db-user=root
+                                            default: root
+        
+          --db-pass=TeamcitypassA1          set up new db password
+                                            example: --db-pass=TeamcitypassA1
+                                            default: TeamcitypassA1
+        
+          --timezone=Europe/Moscow          set up new timezone for db
+                                            example: --timezone=Europe/Moscow
+                                            default: Europe/Moscow
+        
+          -d, --debug                       run config in debug mode
+        
+          -h, --help                        display this help and exit
+        
+          -v, --verbose                     run config in verbose mode
+        
+        Example for init teamcity:
+        
+          ./teamcity --domain-name=teamcity.local \
+                     --network=teamcity \
+                     --db-name=teamcity \
+                     --db-user=root \
+                     --db-pass=TeamcitypassA1 \
+                     -d \
+                     -v \
+                     init
+        
