@@ -5,8 +5,8 @@ services:
     image: "jetbrains/teamcity-server:2018.2.3-linux"
     environment:
       TEAMCITY_SERVER_MEM_OPTS: "-Xmx2g -XX:MaxPermSize=270m -XX:ReservedCodeCacheSize=350m"
-    ports:
-      - "8111:8111"
+#    ports:
+#      - "8111:8111"
     expose:
       - 8111
     volumes:
