@@ -5,14 +5,14 @@ services:
     image: "jetbrains/teamcity-server:2018.2.3-linux"
     environment:
       TEAMCITY_SERVER_MEM_OPTS: "-Xmx2g -XX:MaxPermSize=270m -XX:ReservedCodeCacheSize=350m"
-#    ports:
-#      - "8111:8111"
     expose:
       - 8111
     volumes:
       - "data:/data/teamcity_server/datadir"
       - "logs:/opt/teamcity/logs"
     labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=teamcity"
       - "traefik.backend=teamcity_app"
       - "traefik.frontend.rule=Host:${DOMAIN_NAME}"
     networks:
@@ -25,6 +25,8 @@ services:
     networks:
       - "teamcity"
     labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=teamcity"
       - "traefik.backend=teamcity_agent"
     volumes:
       - "agent_config:/data/teamcity_agent/conf"
@@ -50,6 +52,8 @@ services:
     networks:
       - "teamcity"
     labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=teamcity"
       - "traefik.backend=teamcity_db"
     command: [
       "postgres",
@@ -67,5 +71,4 @@ volumes:
 
 networks:
   teamcity:
-    external:
-      name: "${NETWORK}"
+    external: true
